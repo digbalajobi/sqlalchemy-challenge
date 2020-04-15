@@ -10,18 +10,19 @@ from flask import Flask, jsonify
 
 # Database Setup
 #################################################
+#creating engine
 engine = create_engine("sqlite:///Resources/hawaii.sqlite")
 
-# reflect an existing database into a new model
+# reflect Database & Tables
 Base = automap_base()
-# reflect the tables
 Base.prepare(engine, reflect=True)
-# We can view all of the classes that automap found
-Base.classes.keys()
-# Save references to each table
+
+
+# Save table references 
 Measurement = Base.classes.measurement
 Station = Base.classes.station
 
+#create session
 session = Session(engine)
 
 inspector = inspect(engine)
@@ -32,93 +33,72 @@ inspector.get_table_names()
 #################################################
 app = Flask(__name__)
 
+#Flask Routes
 
-# Define home page
 @app.route("/")
 def home():
-    print("Server received request for 'Home' page...")
-    return (f"Welcome to my Climate Analysis of Hawaii!<br/></br>"
-    f"Available Routes:<br/>"
-    f"Precipitation Analysis: /api/v1.0/precipitation<br/>"
-    f"Station Analysis: /api/v1.0/stations<br/>"
-    f"Temperature Analysis: /api/v1.0/tobs<br/>"
-    f"Temp Stats After Start Date: /api/v1.0/<start><br/>"
-    f"Temp Stats Between Dates: /api/v1.0/<start>/<end>"
+     return(
+        f"Available Routes:<br/>"
+        f"/api/v1.0/precipitation<br/>"
+        f"/api/v1.0/stations<br/>"
+        f"/api/v1.0/tobs<br/>"
+        f"/api/v1.0/<start><br/>"
+        f"/api/v1.0/<start>/<end>"
     )
 
-
-# Define precipitation page
-'''query results to a dictionary using date as the key and 
-prcp as the value'''
 @app.route("/api/v1.0/precipitation")
 def precipitation():
-    print("Server received request for 'Precipitation' page...")
+
+    print("Precipitation API Request recieved")
     
-    # query session for precipitation data
+    # query session for precipitation data (PD)
     session=Session(engine)
     results_p = session.query(Measurement.date, Measurement.prcp).all()
     session.close()
 
-    # create a dictionary collecting the precipitation and date data
-    precip_data = []
-    for date, prcp in results_p:
-        precip_dict = {}
-        precip_dict['Date'] = date
-        precip_dict['Precipitation'] = prcp
-        precip_data.append(precip_dict)
-    
-    # jsonify dictionary
-    return  jsonify(precip_data)
+    # Dictionary list
+    PD = []
+    for result in results:
+        precipDict = {result.date: result.prcp, "Station": result.station}
+        precipData.append(precipDict)
 
-# Define precipitation page
-'''Return a JSON list of stations from the dataset.'''
+    
+    return  jsonify(PD)
+
+
 @app.route("/api/v1.0/stations")
 def station():
-    print("Server received request for 'Stations' page...")
+    print("Stations API Request recieved")
     
-    # query session for station data
+    # query station's list
     session=Session(engine)
     results_s = session.query(Station.station, Station.name).all()
     session.close()
 
-    # create a dictionary collecting the station and station name
-    station_data = []
+    # Dictionary list
+    stationData = []
     for station, name in results_s:
         station_dict = {}
         station_dict['Station'] = station
         station_dict['Name'] = name
         station_data.append(station_dict)
 
-    # jsonify dictionary
-    return jsonify(station_data)
+    return jsonify(stationData)
 
-# Define precipitation page
-'''Query the dates and temperature observations 
-of the most active station for the last year of data.'''
+
 @app.route("/api/v1.0/tobs")
-def temperature():
-    print("Server received request for 'Temperature' page...")
+def tobs():
+    #Temperature observed for the previous year
+    print("Tobs API request recieved")
     
     # query session for temperature data
-    session = Session(engine)
-    results_t = session.query(Station.name, Measurement.station, Measurement.date,\
-        Measurement.tobs).filter(Measurement.station == 'USC00519281').filter(Measurement.date >='2016-08-23').all()
-    session.close()
+    results = (session.query(Measurement.date, Measurement.tobs, Measurement.station)
+                      .filter(Measurement.date > yearBefore)
+                      .order_by(Measurement.date)
+                      .all())
 
-    # create a dictionary collecting the dates and temperatures of the specified station
-    
-    '''attempted the below first, but it did not work. found an option through someone else
-    to append by index instead. see below'''
-    '''tobs_data = []
-    for name, date, tobs in results_t:
-        tobs_dict = {}
-        tobs_dict['name']=name
-        tobs_dict['date']=date
-        tobs_dict['tobs']=tobs
-        tobs_data.append(tobs_dict)
-    '''
 
-    tobs_data = []
+    tobs_tempdata = []
     for t in results_t:
         tobs_dict = {}
         tobs_dict['Station'] = t[0]
@@ -128,14 +108,13 @@ def temperature():
         tobs_data.append(tobs_dict)
 
     # jsonify the dictionary
-    return jsonify(tobs_data)
+    return jsonify(    tobs_tempdata = []
+)
 
-# Define start page
-'''calculate TMIN, TAVG, and TMAX for all dates greater than 
-and equal to the start date.'''
 @app.route("/api/v1.0/<start>")
-def start(start=None):
-    print("Server received request for 'Start Range' page...")
+def start(start):
+    
+    print("Start Range API request recieved")
 
     # query for temperature data for input date
     session = Session(engine)
@@ -144,34 +123,34 @@ def start(start=None):
     avg_date = session.query(Measurement.date, func.avg(Measurement.tobs)).filter(Measurement.date >= start).all()
     session.close()
 
-    start_list = []
+    start_date = []
     
-    # put minimum temp into dictionary and append list
+    #Adding min, max and aveg. temps into dictionary and append list
+
     for x in min_date:
         min_dict = {}
-        min_dict['Minimum Temperature Date'] = x[0]
-        min_dict['Minimum Temperature'] = x[1]
+        min_dict['Min Temperature Date'] = x[0]
+        min_dict['Min Temperature'] = x[1]
         start_list.append(min_dict)
     
-    # put maximum temp into dictionary and append list
     for x in max_date:
         max_dict = {}
-        max_dict['Maximum Temperature Date'] = x[0]
-        max_dict['Maximum Temperature'] = x[1]
+        max_dict['Max Temperature Date'] = x[0]
+        max_dict['Max Temperature'] = x[1]
         start_list.append(max_dict)
     
-    # put average temp into dictionary and append list
     for x in avg_date:
         avg_dict = {}
-        avg_dict['Average Temperature Date'] = x[0]
-        avg_dict['Average Temperature'] = x[1]
+        avg_dict['Avg. Temperature Date'] = x[0]
+        avg_dict['Avg. Temperature'] = x[1]
         start_list.append(avg_dict)
     
-    return jsonify(start_list)
+    return jsonify(start_date)
 
 @app.route("/api/v1.0/<start>/<end>")
-def start_end(start=None, end=None):
-    print("Server received request for 'Start Range' page...")
+def start_end(start, end):
+
+    print("Start and End Range API request recieved")
 
     # query for temperature data for input date
     session = Session(engine)
@@ -182,25 +161,24 @@ def start_end(start=None, end=None):
 
     range_list = []
     
-    # put minimum temp into dictionary and append list
+    #Adding min, max and aveg. temps into dictionary and append list
+
     for x in range_min:
         min_dict = {}
-        min_dict['Minimum Temperature Date'] = x[0]
-        min_dict['Minimum Temperature'] = x[1]
+        min_dict['Min Temp Date'] = x[0]
+        min_dict['Min Temp'] = x[1]
         range_list.append(min_dict)
     
-    # put maximum temp into dictionary and append list
     for x in range_max:
         max_dict = {}
-        max_dict['Maximum Temperature Date'] = x[0]
-        max_dict['Maximum Temperature'] = x[1]
+        max_dict['Max Temp Date'] = x[0]
+        max_dict['Max Temp'] = x[1]
         range_list.append(max_dict)
     
-    # put average temp into dictionary and append list
     for x in range_avg:
         avg_dict = {}
-        avg_dict['Average Temperature Date'] = x[0]
-        avg_dict['Average Temperature'] = x[1]
+        avg_dict['Avg Temp Date'] = x[0]
+        avg_dict['Avg Temp'] = x[1]
         range_list.append(avg_dict)
     
     return jsonify(range_list)
