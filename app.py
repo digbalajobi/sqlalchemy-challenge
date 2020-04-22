@@ -58,9 +58,11 @@ def precipitation():
 
     # Dictionary list
     PD = []
-    for result in results:
-        precipDict = {result.date: result.prcp, "Station": result.station}
-        PD.append(precipDict)
+    for date, prcp in results_p:
+        precip_dict = {}
+        precip_dict['Date'] = date
+        precip_dict['Precipitation'] = prcp
+        PD.append(precip_dict)
 
     
     return  jsonify(PD)
