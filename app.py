@@ -60,7 +60,7 @@ def precipitation():
     PD = []
     for result in results:
         precipDict = {result.date: result.prcp, "Station": result.station}
-        precipData.append(precipDict)
+        PD.append(precipDict)
 
     
     return  jsonify(PD)
@@ -81,7 +81,7 @@ def station():
         station_dict = {}
         station_dict['Station'] = station
         station_dict['Name'] = name
-        station_data.append(station_dict)
+        stationData.append(station_dict)
 
     return jsonify(stationData)
 
@@ -92,10 +92,11 @@ def tobs():
     print("Tobs API request recieved")
     
     # query session for temperature data
-    results = (session.query(Measurement.date, Measurement.tobs, Measurement.station)
-                      .filter(Measurement.date > yearBefore)
-                      .order_by(Measurement.date)
-                      .all())
+    session = Session(engine)
+
+    results_t = session.query(Station.name, Measurement.station, Measurement.date,\
+        Measurement.tobs).filter(Measurement.station == 'USC00519281').filter(Measurement.date >='2016-08-23').all()
+    session.close()
 
 
     tobs_tempdata = []
@@ -105,7 +106,7 @@ def tobs():
         tobs_dict['Name'] = t[1]
         tobs_dict['Date'] = t[2]
         tobs_dict['Temperature'] = t[3]
-        tobs_data.append(tobs_dict)
+        tobs_tempdata.append(tobs_dict)
 
     # jsonify the dictionary
     return jsonify(    tobs_tempdata = []
